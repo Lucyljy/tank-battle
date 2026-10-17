@@ -868,6 +868,7 @@ function loop(ts) {
 
 setState('menu');
 updateHUD();
+if (new URLSearchParams(location.search).has('play')) startGame();
 requestAnimationFrame(loop);
 </script>
 </body>

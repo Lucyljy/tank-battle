@@ -155,7 +155,7 @@ const DIR = [[0,-1],[1,0],[0,1],[-1,0]];
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-let map = [], player = null, enemies = [], bullets = [], powerups = [], explosions = [];
+let map = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY)), player = null, enemies = [], bullets = [], powerups = [], explosions = [];
 let score = 0, lives = 3, level = 1, fireLevel = 1;
 let enemiesToSpawn = 0, totalEnemies = 0, spawnTimer = 0;
 let state = 'menu';                              // menu | playing | paused | over | clear | win
@@ -289,14 +289,14 @@ function makeTank(x, y, dir, owner, type) {
   const base = {
     x, y, dir, owner,
     alive: true, hp: 1,
-    speed: owner === 'player' ? 2.2 : 1.35,
+    speed: owner === 'player' ? 132 : 81,        // 像素/秒
     shootTimer: 0, dirTimer: 0,
     shieldTimer: 0,
   };
   if (owner === 'enemy') {
-    if (type === 'fast') { base.speed = 2.0; base.hp = 1; }
-    else if (type === 'heavy') { base.speed = 1.1; base.hp = 3; }
-    else { base.speed = 1.35; base.hp = 1; }
+    if (type === 'fast') { base.speed = 120; base.hp = 1; }
+    else if (type === 'heavy') { base.speed = 66; base.hp = 3; }
+    else { base.speed = 81; base.hp = 1; }
     base.type = type;
     base.flash = false;           // 携带道具的敌人闪烁
     base.frozen = true;           // 出生冻结
@@ -338,17 +338,21 @@ function tankAt(x, y) {
   return null;
 }
 
-function moveTank(tank, dir, speed) {
+function moveTank(tank, dir, speed, dt) {
   if (dir != null && dir !== tank.dir) {
-    if (dir === UP || dir === DOWN) { if (Math.abs(tank.x - snapX(tank.x)) >= 1) return false; }
-    else { if (Math.abs(tank.y - snapY(tank.y)) >= 1) return false; }
-    tank.dir = dir;
+    // 转弯：先对齐到最近的网格车道，避免因浮点偏移卡住
+    let tx = tank.x, ty = tank.y;
+    if (dir === UP || dir === DOWN) tx = snapX(tank.x);
+    else ty = snapY(tank.y);
+    if (wallCollide(tx, ty, TANK, false) || tankBlock(tx, ty, tank)) return false;
+    tank.x = tx; tank.y = ty; tank.dir = dir;
   }
+  const step = speed * dt;
   let nx = tank.x, ny = tank.y;
-  if (tank.dir === UP) ny -= speed;
-  else if (tank.dir === DOWN) ny += speed;
-  else if (tank.dir === LEFT) nx -= speed;
-  else nx += speed;
+  if (tank.dir === UP) ny -= step;
+  else if (tank.dir === DOWN) ny += step;
+  else if (tank.dir === LEFT) nx -= step;
+  else nx += step;
 
   nx = Math.max(0, Math.min(COLS*TILE - TANK, nx));
   ny = Math.max(0, Math.min(ROWS*TILE - TANK, ny));
@@ -380,9 +384,9 @@ function fire(tank, dir) {
   if (owner === 'player') {
     const active = bullets.filter(b => b.owner === 'player').length;
     if (active >= fireLevel) return;
-    bullets.push({ x: bx, y: by, dir: d, owner, speed: 3.5 + fireLevel, power: fireLevel });
+    bullets.push({ x: bx, y: by, dir: d, owner, speed: (3.5 + fireLevel) * 60, power: fireLevel });
   } else {
-    bullets.push({ x: bx, y: by, dir: d, owner, speed: 3.0, power: 1 });
+    bullets.push({ x: bx, y: by, dir: d, owner, speed: 180, power: 1 });
   }
   sfx.shoot();
 }
@@ -439,7 +443,7 @@ function updateEnemy(e, dt) {
     e.dir = randomDir();
     e.dirTimer = 0.6 + Math.random() * 1.6;
   }
-  if (!moveTank(e, e.dir, e.speed)) {
+  if (!moveTank(e, e.dir, e.speed, dt)) {
     e.dir = randomDir();
     e.dirTimer = 0.5 + Math.random() * 1.0;
   }
@@ -476,8 +480,8 @@ function applyPowerup(p) {
 }
 
 /* ============================= 子弹 ============================= */
-function updateBullet(b) {
-  const dx = DIR[b.dir][0] * b.speed, dy = DIR[b.dir][1] * b.speed;
+function updateBullet(b, dt) {
+  const dx = DIR[b.dir][0] * b.speed * dt, dy = DIR[b.dir][1] * b.speed * dt;
   let nx = b.x + dx, ny = b.y + dy;
   if (nx < 0 || ny < 0 || nx + BULLET_SIZE > COLS*TILE || ny + BULLET_SIZE > ROWS*TILE) {
     bullets.splice(bullets.indexOf(b), 1); return;
@@ -620,7 +624,7 @@ function playerInput(dt) {
 
   if (dx || dy) {
     const dir = dx > 0 ? RIGHT : dx < 0 ? LEFT : dy > 0 ? DOWN : UP;
-    moveTank(player, dir, player.speed);
+    moveTank(player, dir, player.speed, dt);
   }
   if (keys[' ']) {
     fire(player);
@@ -653,7 +657,7 @@ function update(dt) {
   for (const e of enemies) updateEnemy(e, dt);
 
   // 子弹
-  for (const b of [...bullets]) updateBullet(b);
+  for (const b of [...bullets]) updateBullet(b, dt);
 
   // 道具（24px 盒，动画计时 + 拾取）
   for (let i = powerups.length - 1; i >= 0; i--) {

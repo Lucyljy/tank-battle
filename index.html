@@ -121,7 +121,7 @@
         <div><span style="background:#b04a1e"></span>砖墙(可破坏)</div>
         <div><span style="background:#b8bcc2"></span>钢墙(不可破坏)</div>
         <div><span style="background:#2a5fb0"></span>水面(不可通行)</div>
-        <div><span style="background:#3a7a2a"></span>草丛(可隐藏)</div>
+        <div><span style="background:#3a7a2a"></span>草丛(覆盖地面)</div>
         <div><span style="background:#e03131"></span>基地(保护它!)</div>
       </div>
       <div class="controls">
@@ -847,16 +847,17 @@ function render() {
     for (let c = 0; c < COLS; c++)
       if (map[r][c] !== EMPTY && map[r][c] !== GRASS) drawTile(c, r, map[r][c]);
 
-  for (const p of powerups) drawPowerup(p);
-  if (player && player.alive) drawTank(player);
-  for (const e of enemies) drawTank(e);
-  for (const b of bullets) drawBullet(b);
-  // 草丛最后画（半透明覆盖，遮挡坦克）
-  ctx.globalAlpha = 0.85;
+  // 草丛覆盖地面，但放在实体下方绘制，避免坦克被草丛完全遮住
+  ctx.globalAlpha = 0.55;
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       if (map[r][c] === GRASS) drawTile(c, r, GRASS);
   ctx.globalAlpha = 1;
+
+  for (const p of powerups) drawPowerup(p);
+  if (player && player.alive) drawTank(player);
+  for (const e of enemies) drawTank(e);
+  for (const b of bullets) drawBullet(b);
   for (const ex of explosions) drawExplosion(ex);
 }
 

@@ -40,6 +40,8 @@
     border-radius: 6px;
     box-shadow: 0 12px 40px rgba(0,0,0,.55);
     display: block;
+    width: min(600px, calc(100vw - 40px));
+    height: auto;
   }
   .hud {
     width: 240px;
@@ -113,7 +115,7 @@
       <h1>坦克大战<span class="sub">TANK BATTLE</span></h1>
       <div class="stat"><span>分数</span><b id="score">0</b></div>
       <div class="stat"><span>关卡</span><b id="level">1</b></div>
-      <div class="stat"><span>生命</span><b id="lives">3</b></div>
+      <div class="stat"><span>生命</span><b id="lives">5</b></div>
       <div class="stat"><span>剩余敌人</span><b id="left">0</b></div>
       <div class="legend">
         <div><span style="background:#e8b010"></span>玩家坦克</div>
@@ -156,7 +158,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
 let map = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY)), player = null, enemies = [], bullets = [], powerups = [], explosions = [];
-let score = 0, lives = 3, level = 1, fireLevel = 1;
+let score = 0, lives = 5, level = 1, fireLevel = 1;
 let enemiesToSpawn = 0, totalEnemies = 0, spawnTimer = 0;
 let state = 'menu';                              // menu | playing | paused | over | clear | win
 let lastTime = 0, time = 0;
@@ -210,13 +212,13 @@ const LEVELS = [
    ".............",
    "..#..#..#..#.",
    "..#..#..#..#.",
-   ".............",
+   "...#.....#...",
    "##.##.##.##.#",
    ".............",
    ".............",
    "..#..#..#..#.",
    "..#..#..#..#.",
-   ".............",
+   "...#.....#...",
    "....#####....",
    ".....BB......"],
   // 第 2 关
@@ -259,7 +261,7 @@ function randomLevel() {
       if (r === 0 && (c === 0 || c === 6 || c === 12)) { line += '.'; continue; }
       if (r === ROWS-1 && (c === 4 || c === 8)) { line += '.'; continue; }
       const p = Math.random();
-      const dens = Math.min(0.32, 0.16 + level * 0.02);
+      const dens = Math.min(0.42, 0.24 + level * 0.025);
       if (p < dens) line += Math.random() < 0.75 ? '#' : (Math.random() < 0.5 ? 'S' : 'W');
       else line += '.';
     }
@@ -386,6 +388,7 @@ function fire(tank, dir) {
     if (active >= fireLevel) return;
     bullets.push({ x: bx, y: by, dir: d, owner, speed: (3.5 + fireLevel) * 60, power: fireLevel });
   } else {
+    if (bullets.filter(b => b.owner === 'enemy').length >= 5) return;
     bullets.push({ x: bx, y: by, dir: d, owner, speed: 180, power: 1 });
   }
   sfx.shoot();
@@ -542,7 +545,7 @@ function playerHit() {
 
 /* ============================= 流程控制 ============================= */
 function startGame() {
-  score = 0; lives = 3; level = 1; fireLevel = 1;
+  score = 0; lives = 5; level = 1; fireLevel = 1;
   loadLevel(1);
   setState('playing');
 }
